@@ -2,20 +2,102 @@ import logging
 import os
 import warnings
 
+import gym
 import numpy as np
 import tensorflow as tf
+from stable_baselines.common import set_global_seeds
 
-# https://stackoverflow.com/questions/40426502/is-there-a-way-to-suppress-the-messages-tensorflow-prints/40426709
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
-# https://stackoverflow.com/questions/15777951/how-to-suppress-pandas-future-warning
-warnings.simplefilter(action='ignore', category=FutureWarning)
-warnings.simplefilter(action='ignore', category=Warning)
+def turn_off_log_warnings():
+    # https://stackoverflow.com/questions/40426502/is-there-a-way-to-suppress-the-messages-tensorflow-prints/40426709
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
-tf.get_logger().setLevel('INFO')
-tf.autograph.set_verbosity(0)
+    # https://stackoverflow.com/questions/15777951/how-to-suppress-pandas-future-warning
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=Warning)
 
-tf.get_logger().setLevel(logging.ERROR)
+    tf.get_logger().setLevel('INFO')
+    tf.autograph.set_verbosity(0)
+
+    tf.get_logger().setLevel(logging.ERROR)
+
+
+def make_env(env_id, rank, seed=0):
+    """
+    Utility function for multi-processed env.
+    :param env_id: (str) the environment ID
+    :param rank: (int) the number of environment you wish to have in subprocesses
+    :param seed: (int) the initial seed for RNG
+    :return: (int) index of the subprocess
+    """
+
+    def _init():
+        env = gym.make(env_id)
+        env.seed(seed + rank)
+        return env
+
+    set_global_seeds(seed)
+    return _init
+
+
+def evaluate_multi_processes(model, num_steps=1000):
+    """
+    Evaluate a RL agent
+    :param model: (BaseRLModel object) the RL Agent
+    :param num_steps: (int) number of timesteps to evaluate it
+    :return: (float) Mean reward
+    """
+    env = model.get_env()
+    episode_rewards = [[0.0] for _ in range(env.num_envs)]
+    obs = env.reset()
+    for i in range(num_steps):
+        # _states are only useful when using LSTM policies
+        actions, _states = model.predict(obs)
+        # here, action, rewards and dones are arrays
+        # because we are using vectorized env
+        obs, rewards, dones, info = env.step(actions)
+        # Stats
+        for i in range(env.num_envs):
+            episode_rewards[i][-1] += rewards[i]
+            if dones[i]:
+                episode_rewards[i].append(0.0)
+
+        mean_rewards = [0.0 for _ in range(env.num_envs)]
+        n_episodes = 0
+        for i in range(env.num_envs):
+            mean_rewards[i] = np.mean(episode_rewards[i])
+            n_episodes += len(episode_rewards[i])
+
+        # Compute mean reward
+        mean_reward = round(np.mean(mean_rewards), 1)
+        print("Mean reward:", mean_reward, "Num episodes:", n_episodes)
+        return mean_reward
+
+
+def evaluate_last_100_episode(model, num_steps=1000):
+    """
+    Evaluate a RL agent
+    :param model: (BaseRLModel object) the RL agent
+    :param num_steps: (int) number of time-steps to evaluate it
+    :return: (float) mean reward for the last 100 episode
+    """
+    env = model.get_env()
+    episode_rewards = [0.0]
+    obs = env.reset()
+    for i in range(num_steps):
+        # States are only useful when using LSTM policies
+        action, _states = model.predict(obs)
+        obs, reward, done, info = env.step(action)
+        env.render()
+        # Statics
+        episode_rewards[-1] += reward
+        if done:
+            obs = env.reset()
+            episode_rewards.append(0.0)
+    # Compute mean reward for the last 100 episode
+    mean_100ep_reward = round(np.mean(episode_rewards[-100:]), 1)
+    print('Mean reward of the last 100 episodes is: ', mean_100ep_reward, "Num episodes are: ", len(episode_rewards))
+    return mean_100ep_reward
 
 
 def evaluate(model, env, num_episodes=100):

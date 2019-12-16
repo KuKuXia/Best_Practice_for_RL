@@ -12,7 +12,7 @@ class EvalCallback(object):
     """
     Callback for evaluating an agent.
     :param eval_env: (gym.Env) The environment used for initialization
-    :param n_eval_episodes: (int) The number of episodes to test the agent
+    :param n_eval_episodes: (int) The number of episodes to test the agent, usually 5-20
     :param eval_freq: (int) Evaluate the agent every eval_freq call of the callback.
     """
 
