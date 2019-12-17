@@ -6,6 +6,7 @@ import gym
 import numpy as np
 import tensorflow as tf
 from stable_baselines.common import set_global_seeds
+from stable_baselines.common.vec_env import VecVideoRecorder
 
 
 def turn_off_log_warnings():
@@ -132,3 +133,26 @@ def get_callback_vars(model, **kwargs):
             if name not in model._callback_vars:
                 model._callback_vars[name] = val
     return model._callback_vars  # return dict reference (mutable)
+
+
+def record_video(env_id, model, video_length=500, prefix='', video_folder='./logs/videos/'):
+    """
+    :param env_id: (str)
+    :param model: (RL model)
+    :param video_length: (int)
+    :param prefix: (str)
+    :param video_folder: (str)
+    """
+
+    # Start the video at step=0 and record 500 steps
+    eval_env = VecVideoRecorder(env_id, video_folder=video_folder,
+                                record_video_trigger=lambda step: step == 0, video_length=video_length,
+                                name_prefix=prefix)
+
+    obs = eval_env.reset()
+    for _ in range(video_length):
+        action, _ = model.predict(obs)
+        obs, _, _, _ = eval_env.step(action)
+
+    # Close the video recorder
+    eval_env.close()

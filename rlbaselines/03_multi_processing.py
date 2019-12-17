@@ -1,3 +1,7 @@
+"""
+When using SubprocVecEnv, users must wrap the code in an if __name__ == "__main__": if using the forkserver or spawn start method (default on Windows). On Linux, the default start method is fork which is not thread safe and can create deadlocks.
+"""
+
 import time
 
 import gym

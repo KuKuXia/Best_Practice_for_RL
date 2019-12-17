@@ -26,7 +26,7 @@ model = PPO2("MlpPolicy", env).learn(total_timesteps=10000)
 # Don't forget to save the VecNormalize statistics when saving the agent
 log_dir = './model/gym/'
 model.save(log_dir + 'ppo_reacher')
-model.save(os.path.join(log_dir, 'vec_normalize.pkl'))
+env.save(os.path.join(log_dir, 'vec_normalize.pkl'))
 
 obs = env.reset()
 for i in range(2000):
