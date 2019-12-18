@@ -14,8 +14,8 @@ def turn_off_log_warnings():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
     # https://stackoverflow.com/questions/15777951/how-to-suppress-pandas-future-warning
-    warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=Warning)
+    warnings.simplefilter(action='ignore', category=FutureWarning)
 
     tf.get_logger().setLevel('INFO')
     tf.autograph.set_verbosity(0)
